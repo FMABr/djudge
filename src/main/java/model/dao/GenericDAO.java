@@ -1,57 +1,67 @@
 package model.dao;
 
+import java.util.List;
+
 import javax.persistence.EntityManager;
-import util.ConnectionFactory;
+import javax.persistence.criteria.CriteriaQuery;
 
-/**
- *
- * @author eddunic
- * @param <T>
- */
-public class GenericDAO<T extends BaseEntity> {
+import model.bean.ModelBean;
 
-    public T findById(Class<T> clazz, Long id) {
-        EntityManager manager = ConnectionFactory.getEntityManager();
-        return manager.find(clazz, id);
-    }
+public class GenericDAO<Entity extends ModelBean<Id>, Id> {
+	
+	
+	private Class<Entity> persistedClass;
+	
+	public GenericDAO(Class<Entity> persistedClass) {
+		this.persistedClass = persistedClass;
+	}
+	
+	public void save(Entity entity) {
+		EntityManager em = EntityManagerProvider.getEntityManager();
+		em.getTransaction().begin();
+		em.persist(entity);
+		em.flush();
+		em.getTransaction().commit();
+		em.close();
+	}
+	
+	public Entity find(Entity entity) {
+		EntityManager em = EntityManagerProvider.getEntityManager();
+		return em.find(persistedClass, entity.getPK());
+	}
 
-    public void saveOrUpdate(T obj) {
-        EntityManager manager = ConnectionFactory.getEntityManager();
-        try {
-            manager.getTransaction().begin();
-            if (obj.getId() == null) {
-                manager.persist(obj);
-            } else {
-                manager.merge(obj);
-            }
-            manager.getTransaction().commit();
-        } catch (Exception e) {
-            manager.getTransaction().rollback();
-        }
-    }
+    public Entity findById(Id id) {
+    	EntityManager em = EntityManagerProvider.getEntityManager();
+		return em.find(persistedClass, id);
+	}
+    
+    public List<Entity> findAll() {
+    	EntityManager em = EntityManagerProvider.getEntityManager();
+		CriteriaQuery<Entity> criteria = em.getCriteriaBuilder().createQuery(persistedClass);
+		criteria.from(persistedClass);
+		return em.createQuery(criteria).getResultList();
+	}
+    
+    public void update(Entity entity) {
+    	EntityManager em = EntityManagerProvider.getEntityManager();
+		em.getTransaction().begin();
+		em.merge(entity);
+		em.flush();
+		em.getTransaction().commit();
+		em.close();
+	}   
 
-    private final static EntityManager manager = ConnectionFactory.getEntityManager();
-
-    public T findById2(Class<T> clazz, Long id) {
-        manager.getTransaction().begin();
-        return manager.find(clazz, id);
-    }
-
-    public void remove(T t) {
-        manager.merge(t);
-        manager.remove(t);
-        manager.getTransaction().commit();
-    }
-
-//    public void remove(Class<T> clazz, Long id) {
-//        EntityManager manager = ConnectionFactory.getEntityManager();
-//        T t = findById(clazz, id);
-//        try {
-//            manager.getTransaction().begin();
-//            manager.remove(t);
-//            manager.getTransaction().commit();
-//        } catch (Exception e) {
-//            manager.getTransaction().rollback();
-//        }
-//    }
+    public void remove(Entity entity) {
+    	EntityManager em = EntityManagerProvider.getEntityManager();
+		em.getTransaction().begin();
+		em.remove(entity);
+		em.flush();
+		em.getTransaction().commit();
+		em.close();
+	}
+    
+    public void removeById(Id id) {
+    	Entity entidade = findById(id);	
+		remove(entidade);
+	}
 }
